@@ -18,7 +18,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { toast } from "sonner-native";
 import { AddVehicleModal } from "../../src/components/vehicles/AddVehicleModal";
 import { VehicleCard } from "../../src/components/vehicles/VehicleCard";
@@ -83,7 +86,6 @@ export default function VehiclesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
-
         {/* ── Sticky header ── */}
         <View
           style={{
@@ -96,7 +98,10 @@ export default function VehiclesScreen() {
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={() => router.back()}
-              style={{ backgroundColor: colors.card, borderColor: colors.border }}
+              style={{
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              }}
               className="h-11 w-11 items-center justify-center rounded-full border"
             >
               <ArrowLeft size={20} color={colors.text} />
@@ -129,9 +134,7 @@ export default function VehiclesScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl refreshing={isFetching} onRefresh={refetch} />
-          }
+          refreshControl={<RefreshControl refreshing={isFetching} />}
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingTop: 20,
@@ -149,10 +152,16 @@ export default function VehiclesScreen() {
           >
             <ShieldCheck size={20} color={colors.primary} />
             <View className="flex-1">
-              <Text style={{ color: colors.text }} className="text-sm font-extrabold">
+              <Text
+                style={{ color: colors.text }}
+                className="text-sm font-extrabold"
+              >
                 RC verification required
               </Text>
-              <Text style={{ color: colors.muted }} className="mt-1 text-xs leading-5">
+              <Text
+                style={{ color: colors.muted }}
+                className="mt-1 text-xs leading-5"
+              >
                 Every vehicle needs an RC document. New vehicles stay pending
                 until our team approves them.
               </Text>
@@ -218,7 +227,6 @@ export default function VehiclesScreen() {
           <Plus size={20} color="#FFFFFF" strokeWidth={2.5} />
           <Text className="text-sm font-extrabold text-white">Add Vehicle</Text>
         </TouchableOpacity>
-
       </SafeAreaView>
 
       {/* ── Add Vehicle Modal ── */}

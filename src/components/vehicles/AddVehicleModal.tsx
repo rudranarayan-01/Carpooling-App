@@ -20,7 +20,6 @@ import {
   Modal,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -40,27 +39,28 @@ type VehicleFormErrors = {
   rcFile?: string;
 };
 
-// ─── FieldLabel ───────────────────────────────────────────────────────────────
+// ─── Field Components ─────────────────────────────────────────────────────────
 
 function FieldLabel({ label, colors }: { label: string; colors: any }) {
   return (
-    <Text style={[styles.fieldLabel, { color: colors.muted }]}>{label}</Text>
+    <Text
+      className="text-[11px] font-bold uppercase tracking-wider mb-1.5 ml-0.5"
+      style={{ color: colors.muted }}
+    >
+      {label}
+    </Text>
   );
 }
-
-// ─── FieldError ──────────────────────────────────────────────────────────────
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <View style={styles.errorRow}>
-      <AlertCircle size={11} color="#EF4444" />
-      <Text style={styles.errorText}>{message}</Text>
+    <View className="flex-row items-center gap-1 mt-1.5 ml-0.5">
+      <AlertCircle size={12} color="#EF4444" />
+      <Text className="text-[11px] text-red-500 font-medium">{message}</Text>
     </View>
   );
 }
-
-// ─── AppInput ────────────────────────────────────────────────────────────────
 
 function AppInput({
   icon,
@@ -84,19 +84,16 @@ function AppInput({
   colors: any;
 }) {
   return (
-    <View style={{ flex: 1, marginBottom: 14 }}>
+    <View className="flex-1 mb-3.5">
       <FieldLabel label={label} colors={colors} />
-
       <View
-        style={[
-          styles.inputRow,
-          {
-            backgroundColor: colors.input,
-            borderColor: colors.border,
-          },
-        ]}
+        className="flex-row items-center gap-3 px-3.5 rounded-2xl border min-h-[50px]"
+        style={{
+          backgroundColor: colors.input,
+          borderColor: colors.border,
+        }}
       >
-        <View style={{ opacity: 0.75 }}>{icon}</View>
+        <View className="opacity-70">{icon}</View>
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -105,16 +102,14 @@ function AppInput({
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           autoCorrect={false}
-          style={[styles.textInput, { color: colors.text }]}
+          className="flex-1 text-sm font-semibold py-0"
+          style={{ color: colors.text }}
         />
       </View>
-
       <FieldError message={error} />
     </View>
   );
 }
-
-// ─── SeatSelector ─────────────────────────────────────────────────────────────
 
 function SeatSelector({
   seats,
@@ -130,48 +125,54 @@ function SeatSelector({
   const n = Math.max(1, Number(seats || 1));
 
   return (
-    <View style={{ marginBottom: 14 }}>
+    <View className="mb-3.5">
       <FieldLabel label="Seats" colors={colors} />
-
       <View
-        style={[
-          styles.seatRow,
-          {
-            backgroundColor: colors.input,
-            borderColor: colors.border,
-          },
-        ]}
+        className="flex-row items-center justify-between px-3.5 py-2 rounded-2xl border min-h-[50px]"
+        style={{
+          backgroundColor: colors.input,
+          borderColor: error ? "#EF4444" : colors.border,
+        }}
       >
         <TouchableOpacity
-          activeOpacity={0.75}
+          activeOpacity={0.7}
           onPress={() => setSeats(String(Math.max(1, n - 1)))}
-          style={[styles.seatBtn, { backgroundColor: colors.card }]}
+          className="w-8 h-8 rounded-xl items-center justify-center shadow-sm"
+          style={{ backgroundColor: colors.card }}
         >
-          <Text style={[styles.seatBtnText, { color: colors.text }]}>−</Text>
+          <Text className="text-lg font-bold" style={{ color: colors.text }}>
+            −
+          </Text>
         </TouchableOpacity>
 
-        <View style={styles.seatCenter}>
-          <Text style={[styles.seatCount, { color: colors.text }]}>{n}</Text>
-          <Text style={[styles.seatUnit, { color: colors.muted }]}>
+        <View className="items-center">
+          <Text
+            className="text-base font-extrabold"
+            style={{ color: colors.text }}
+          >
+            {n}
+          </Text>
+          <Text
+            className="text-[9px] font-bold uppercase tracking-widest"
+            style={{ color: colors.muted }}
+          >
             {n === 1 ? "seat" : "seats"}
           </Text>
         </View>
 
         <TouchableOpacity
-          activeOpacity={0.75}
+          activeOpacity={0.7}
           onPress={() => setSeats(String(Math.min(8, n + 1)))}
-          style={[styles.seatBtn, { backgroundColor: colors.primary }]}
+          className="w-8 h-8 rounded-xl items-center justify-center shadow-sm"
+          style={{ backgroundColor: colors.primary }}
         >
-          <Text style={styles.seatBtnTextWhite}>+</Text>
+          <Text className="text-lg font-bold text-white">+</Text>
         </TouchableOpacity>
       </View>
-
       <FieldError message={error} />
     </View>
   );
 }
-
-// ─── UploadCard ───────────────────────────────────────────────────────────────
 
 function UploadCard({
   title,
@@ -193,54 +194,53 @@ function UploadCard({
   const uploaded = !!file;
 
   return (
-    <View style={{ flex: 1 }}>
+    <View className="flex-1">
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={onPress}
-        style={[
-          styles.uploadCard,
-          {
-            backgroundColor: uploaded ? colors.primarySoft : colors.input,
-            borderColor: uploaded ? colors.primary : colors.border,
-          },
-        ]}
+        className="p-3.5 rounded-2xl border-[1.5px] border-dashed justify-between min-h-[125px]"
+        style={{
+          backgroundColor: uploaded ? colors.primarySoft : colors.input,
+          borderColor: uploaded ? colors.primary : colors.border,
+        }}
       >
-        {/* Icon badge */}
-        <View style={[styles.uploadIconBadge, { backgroundColor: colors.card }]}>
+        <View
+          className="w-9 h-9 rounded-xl items-center justify-center"
+          style={{ backgroundColor: colors.card }}
+        >
           {uploaded ? <BadgeCheck size={18} color="#10B981" /> : icon}
         </View>
 
-        {/* Labels */}
-        <Text
-          style={[styles.uploadTitle, { color: colors.text }]}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
-        <Text
-          style={[styles.uploadSubtitle, { color: colors.muted }]}
-          numberOfLines={2}
-        >
-          {uploaded ? file?.name : subtitle}
-        </Text>
+        <View className="mt-2">
+          <Text
+            className="text-xs font-bold"
+            style={{ color: colors.text }}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+          <Text
+            className="text-[11px] mt-0.5 leading-tight"
+            style={{ color: colors.muted }}
+            numberOfLines={2}
+          >
+            {uploaded ? file?.name : subtitle}
+          </Text>
+        </View>
 
-        {/* Status */}
         <Text
-          style={[
-            styles.uploadStatus,
-            { color: uploaded ? "#10B981" : colors.primary },
-          ]}
+          className="text-[11px] font-bold mt-2"
+          style={{ color: uploaded ? "#10B981" : colors.primary }}
         >
           {uploaded ? "✓ Uploaded" : "Tap to upload"}
         </Text>
       </TouchableOpacity>
-
       <FieldError message={error} />
     </View>
   );
 }
 
-// ─── AddVehicleModal ─────────────────────────────────────────────────────────
+// ─── Main Modal Component ─────────────────────────────────────────────────────
 
 export function AddVehicleModal({
   visible,
@@ -255,9 +255,7 @@ export function AddVehicleModal({
 }) {
   const { colors, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
-  // FIX 1: useWindowDimensions for responsive layout decisions
   const { width: screenWidth } = useWindowDimensions();
-  // On narrow screens (< 360px) stack brand/model vertically instead of side by side
   const stackInputs = screenWidth < 360;
 
   const [brand, setBrand] = useState("");
@@ -265,8 +263,10 @@ export function AddVehicleModal({
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [color, setColor] = useState("");
   const [seats, setSeats] = useState("4");
-  const [rcFile, setRcFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
-  const [vehiclePhoto, setVehiclePhoto] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [rcFile, setRcFile] =
+    useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [vehiclePhoto, setVehiclePhoto] =
+    useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [errors, setErrors] = useState<VehicleFormErrors>({});
 
   const canSubmit = useMemo(
@@ -284,13 +284,20 @@ export function AddVehicleModal({
     setErrors((p) => ({ ...p, [key]: undefined }));
 
   const resetForm = () => {
-    setBrand(""); setModel(""); setRegistrationNumber("");
-    setColor(""); setSeats("4");
-    setRcFile(null); setVehiclePhoto(null);
+    setBrand("");
+    setModel("");
+    setRegistrationNumber("");
+    setColor("");
+    setSeats("4");
+    setRcFile(null);
+    setVehiclePhoto(null);
     setErrors({});
   };
 
-  const handleClose = () => { resetForm(); onClose(); };
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
 
   const pickFile = async (
     type: string[],
@@ -298,21 +305,36 @@ export function AddVehicleModal({
     fieldKey: keyof VehicleFormErrors,
   ) => {
     try {
+      // 1. Optional: Request storage access permission if targeting older Android or specific scoped storage
+      if (Platform.OS === "android") {
+        // Expo document picker handles its own intent, but copying to cache
+        // ensures we have local read access without scoped storage blocks.
+      }
+
       const result = await DocumentPicker.getDocumentAsync({
         type,
-        copyToCacheDirectory: true,
+        copyToCacheDirectory: true, // Crucial: ensures file is copied to app cache where you have read permission
         multiple: false,
       });
+
       if (result.canceled) return;
       const file = result.assets[0];
+
       if (file.size && file.size > 5 * 1024 * 1024) {
         setErrors((p) => ({ ...p, [fieldKey]: "Must be under 5 MB." }));
         return;
       }
+
+      // 2. Verify read permissions/accessibility by checking info or reading a tiny bit
+      // or simply letting cache copy handle it safely.
       clearError(fieldKey);
       setter(file);
-    } catch {
-      setErrors((p) => ({ ...p, [fieldKey]: "Couldn't select file." }));
+    } catch (err) {
+      console.error("Permission or picking error:", err);
+      setErrors((p) => ({
+        ...p,
+        [fieldKey]: "Permission denied or couldn't read file.",
+      }));
     }
   };
 
@@ -320,8 +342,10 @@ export function AddVehicleModal({
     const e: VehicleFormErrors = {};
     if (!brand.trim()) e.brand = "Brand is required.";
     if (!model.trim()) e.model = "Model is required.";
-    if (!registrationNumber.trim()) e.registrationNumber = "Vehicle number is required.";
-    if (!Number(seats) || Number(seats) < 1) e.seats = "At least 1 seat required.";
+    if (!registrationNumber.trim())
+      e.registrationNumber = "Vehicle number is required.";
+    if (!Number(seats) || Number(seats) < 1)
+      e.seats = "At least 1 seat required.";
     if (!rcFile) e.rcFile = "RC document is required.";
     if (!vehiclePhoto) e.vehiclePhoto = "Vehicle photo is required.";
     setErrors(e);
@@ -329,30 +353,32 @@ export function AddVehicleModal({
   };
 
   const handleSubmit = async () => {
-    if (!validate()) {
-      // toast.error("Please fill in all required fields.");
-      // logger.error("Please fill in all required fields.");
-      return;
-    }
+    if (!validate()) return;
 
     const formData = new FormData();
     formData.append("vehicle_type", "car");
     formData.append("brand", brand.trim());
     formData.append("model", model.trim());
-    formData.append("registration_number", registrationNumber.trim().toUpperCase());
+    formData.append(
+      "registration_number",
+      registrationNumber.trim().toUpperCase(),
+    );
     formData.append("rc_number", registrationNumber.trim().toUpperCase());
     formData.append("color", color.trim() || "");
     formData.append("seats", String(Number(seats)));
     formData.append("available_seats", String(Number(seats)));
 
-    // FIX 2: Use expo-file-system File class — satisfies SDK 56's new FormData
-    // validator. The old {uri, name, type} plain-object pattern is no longer
-    // accepted by the new native networking stack.
     if (rcFile) {
       try {
+        // Attempt using the new File API first
         const rcFileObj = new File(rcFile.uri);
-        formData.append("rc_document", rcFileObj, rcFile.name || "rc-document.pdf");
-      } catch {
+        formData.append(
+          "rc_document",
+          rcFileObj,
+          rcFile.name || "rc-document.pdf",
+        );
+      } catch (e) {
+        // Fallback gracefully for Expo Go / restricted content providers
         formData.append("rc_document", {
           uri: rcFile.uri,
           name: rcFile.name || "rc-document.pdf",
@@ -364,8 +390,12 @@ export function AddVehicleModal({
     if (vehiclePhoto) {
       try {
         const photoFileObj = new File(vehiclePhoto.uri);
-        formData.append("vehicle_photo", photoFileObj, vehiclePhoto.name || "vehicle-photo.jpg");
-      } catch {
+        formData.append(
+          "vehicle_photo",
+          photoFileObj,
+          vehiclePhoto.name || "vehicle-photo.jpg",
+        );
+      } catch (e) {
         formData.append("vehicle_photo", {
           uri: vehiclePhoto.uri,
           name: vehiclePhoto.name || "vehicle-photo.jpg",
@@ -385,74 +415,70 @@ export function AddVehicleModal({
       statusBarTranslucent
       onRequestClose={handleClose}
     >
-      {/*
-        FIX 3: BlurView only on iOS — on Android it causes frame drops.
-        Android gets a plain semi-transparent dark overlay instead.
-      */}
       {Platform.OS === "ios" ? (
         <BlurView
-          intensity={28}
+          intensity={30}
           tint={isDark ? "dark" : "light"}
-          style={StyleSheet.absoluteFill}
+          className="absolute inset-0"
         />
       ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.6)" }]} />
+        <View className="absolute inset-0 bg-black/60" />
       )}
 
-      {/*
-        FIX 4: KAV behavior — padding on iOS (standard), undefined on Android.
-        Android uses keyboardDismissMode="on-drag" on ScrollView instead.
-        This prevents the modal from erratically shrinking on Android.
-      */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
+        className="flex-1"
       >
-        <View style={{ flex: 1, justifyContent: "flex-end" }}>
-          {/* Tap-outside to close */}
+        <View className="flex-1 justify-end">
           <TouchableOpacity
             activeOpacity={1}
             onPress={handleClose}
-            style={{ flex: 1 }}
+            className="flex-1"
           />
 
-          {/* Sheet */}
           <View
-            style={[
-              styles.sheet,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                paddingBottom: Math.max(insets.bottom, 20),
-                // FIX 5: maxHeight with safe floor — 88% on normal phones,
-                // but no more than 92% so the tap-target above is always reachable
-                maxHeight: "88%",
-              },
-            ]}
+            className="rounded-t-[28px] border-t border-x overflow-hidden shadow-2xl"
+            style={{
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              paddingBottom: Math.max(insets.bottom, 16),
+              maxHeight: "88%",
+            }}
           >
-            {/* Handle bar */}
-            <View style={styles.handleBar}>
-              <View style={[styles.handle, { backgroundColor: colors.border }]} />
+            {/* Grab Handle */}
+            <View className="items-center pt-3 pb-1">
+              <View
+                className="w-10 h-1 rounded-full opacity-40"
+                style={{ backgroundColor: colors.border }}
+              />
             </View>
 
-            {/* Sheet header */}
+            {/* Header */}
             <View
-              style={[styles.sheetHeader, { borderBottomColor: colors.border }]}
+              className="flex-row items-center justify-between px-5 py-4 border-b"
+              style={{ borderBottomColor: colors.border }}
             >
-              <View style={{ flex: 1, paddingRight: 14 }}>
-                <Text style={[styles.sheetTitle, { color: colors.text }]}>
-                  Add vehicle
+              <View className="flex-1 pr-3">
+                <Text
+                  className="text-lg font-extrabold tracking-tight"
+                  style={{ color: colors.text }}
+                >
+                  Add Vehicle
                 </Text>
-                <Text style={[styles.sheetSubtitle, { color: colors.muted }]}>
-                  Your vehicle will be reviewed before it's activated
+                <Text
+                  className="text-xs mt-0.5"
+                  style={{ color: colors.muted }}
+                >
+                  Your vehicle will be reviewed before activation
                 </Text>
               </View>
 
               <TouchableOpacity
-                activeOpacity={0.8}
+                activeOpacity={0.7}
                 onPress={handleClose}
                 disabled={loading}
-                style={[styles.closeBtn, { backgroundColor: colors.input }]}
+                className="w-9 h-9 rounded-full items-center justify-center"
+                style={{ backgroundColor: colors.input }}
               >
                 <X size={16} color={colors.text} />
               </TouchableOpacity>
@@ -464,62 +490,69 @@ export function AddVehicleModal({
               keyboardDismissMode="on-drag"
               contentContainerStyle={{
                 paddingHorizontal: 20,
-                paddingTop: 20,
-                paddingBottom: 8,
+                paddingTop: 18,
+                paddingBottom: 10,
               }}
             >
-              {/* RC info banner */}
+              {/* Info Banner */}
               <View
-                style={[
-                  styles.infoBanner,
-                  {
-                    backgroundColor: colors.primarySoft,
-                    borderColor: colors.border,
-                  },
-                ]}
+                className="flex-row items-start gap-3 border rounded-2xl p-3.5 mb-4 shadow-sm"
+                style={{
+                  backgroundColor: colors.primarySoft,
+                  borderColor: colors.border,
+                }}
               >
                 <ShieldCheck size={18} color={colors.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.bannerTitle, { color: colors.text }]}>
-                    RC document required
+                <View className="flex-1">
+                  <Text
+                    className="text-xs font-bold"
+                    style={{ color: colors.text }}
+                  >
+                    Verification Required
                   </Text>
-                  <Text style={[styles.bannerBody, { color: colors.muted }]}>
-                    Upload a clear copy of your registration certificate (PDF, JPG, or PNG, max 5 MB). New vehicles are pending until approved.
+                  <Text
+                    className="text-[11px] mt-0.5 leading-relaxed"
+                    style={{ color: colors.muted }}
+                  >
+                    Upload a clear RC document (PDF/Image, max 5MB). Approvals
+                    usually take under 24 hours.
                   </Text>
                 </View>
               </View>
 
-              {/*
-                FIX 6: Brand + Model — side-by-side on normal screens,
-                stacked on very narrow ones (< 360px)
-              */}
-              <View style={stackInputs ? styles.inputColStack : styles.inputRowSplit}>
+              {/* Brand and Model */}
+              <View className={stackInputs ? "flex-col" : "flex-row gap-3"}>
                 <AppInput
                   colors={colors}
-                  icon={<Car size={17} color={colors.primary} />}
+                  icon={<Car size={16} color={colors.primary} />}
                   label="Brand"
                   value={brand}
-                  onChangeText={(v) => { setBrand(v); clearError("brand"); }}
+                  onChangeText={(v) => {
+                    setBrand(v);
+                    clearError("brand");
+                  }}
                   placeholder="Hyundai"
                   error={errors.brand}
                 />
-                {!stackInputs && <View style={{ width: 12 }} />}
                 <AppInput
                   colors={colors}
-                  icon={<Car size={17} color={colors.primary} />}
+                  icon={<Car size={16} color={colors.primary} />}
                   label="Model"
                   value={model}
-                  onChangeText={(v) => { setModel(v); clearError("model"); }}
+                  onChangeText={(v) => {
+                    setModel(v);
+                    clearError("model");
+                  }}
                   placeholder="i20"
                   error={errors.model}
                 />
               </View>
 
-              {/* Registration number — full width */}
+              {/* Registration Number */}
               <AppInput
                 colors={colors}
-                icon={<Hash size={17} color={colors.primary} />}
-                label="Vehicle number"
+                icon={<Hash size={16} color={colors.primary} />}
+                label="Vehicle Number"
                 value={registrationNumber}
                 onChangeText={(v) => {
                   setRegistrationNumber(v.toUpperCase());
@@ -530,80 +563,85 @@ export function AddVehicleModal({
                 error={errors.registrationNumber}
               />
 
-              {/* Upload cards */}
-              <View style={{ marginBottom: 14 }}>
-                <FieldLabel label="Documents & photo" colors={colors} />
-                <View style={styles.uploadRow}>
+              {/* Documents Upload Section */}
+              <View className="mb-3.5">
+                <FieldLabel label="Photos & Documents" colors={colors} />
+                <View className="flex-row gap-3">
                   <UploadCard
                     colors={colors}
-                    title="Vehicle photo"
-                    subtitle="Clear front or side view"
+                    title="Vehicle Photo"
+                    subtitle="Clear outside view"
                     file={vehiclePhoto}
-                    icon={<Car size={18} color={colors.primary} />}
-                    onPress={() => pickFile(["image/*"], setVehiclePhoto, "vehiclePhoto")}
+                    icon={<Car size={16} color={colors.primary} />}
+                    onPress={() =>
+                      pickFile(["image/*"], setVehiclePhoto, "vehiclePhoto")
+                    }
                     error={errors.vehiclePhoto}
                   />
-                  <View style={{ width: 10 }} />
                   <UploadCard
                     colors={colors}
-                    title="RC document"
-                    subtitle="PDF, JPG, or PNG"
+                    title="RC Document"
+                    subtitle="PDF or Image copy"
                     file={rcFile}
-                    icon={<FileText size={18} color={colors.primary} />}
+                    icon={<FileText size={16} color={colors.primary} />}
                     onPress={() =>
-                      pickFile(["image/*", "application/pdf"], setRcFile, "rcFile")
+                      pickFile(
+                        ["image/*", "application/pdf"],
+                        setRcFile,
+                        "rcFile",
+                      )
                     }
                     error={errors.rcFile}
                   />
                 </View>
               </View>
 
-              {/* Color + Seats — responsive row */}
-              <View style={[styles.inputRowSplit, { alignItems: "flex-start" }]}>
+              {/* Color & Seats Row */}
+              <View className="flex-row gap-3 items-start">
                 <AppInput
                   colors={colors}
-                  icon={<Palette size={17} color={colors.primary} />}
-                  label="Color (optional)"
+                  icon={<Palette size={16} color={colors.primary} />}
+                  label="Color (Optional)"
                   value={color}
                   onChangeText={setColor}
                   placeholder="White"
                 />
-                <View style={{ width: 12 }} />
-                <View style={{ width: "42%" }}>
+                <View className="flex-1">
                   <SeatSelector
                     colors={colors}
                     seats={seats}
-                    setSeats={(v) => { setSeats(v); clearError("seats"); }}
+                    setSeats={(v) => {
+                      setSeats(v);
+                      clearError("seats");
+                    }}
                     error={errors.seats}
                   />
                 </View>
               </View>
 
-              {/* Submit */}
+              {/* Submit Button */}
               <TouchableOpacity
-                activeOpacity={0.85}
+                activeOpacity={0.8}
                 disabled={loading}
                 onPress={handleSubmit}
-                style={[
-                  styles.submitBtn,
-                  {
-                    backgroundColor: canSubmit ? colors.primary : colors.input,
-                    opacity: loading ? 0.75 : 1,
-                  },
-                ]}
+                className="flex-row items-center justify-center gap-2 rounded-2xl py-4 mt-2 mb-2 shadow-md"
+                style={{
+                  backgroundColor: canSubmit ? colors.primary : colors.input,
+                  opacity: loading ? 0.75 : 1,
+                }}
               >
                 {loading ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
                   <>
-                    <Plus size={17} color={canSubmit ? "#fff" : colors.muted} />
+                    <Plus size={16} color={canSubmit ? "#fff" : colors.muted} />
                     <Text
-                      style={[
-                        styles.submitBtnText,
-                        { color: canSubmit ? "#fff" : colors.muted },
-                      ]}
+                      className="text-sm font-extrabold tracking-wide"
+                      style={{ color: canSubmit ? "#fff" : colors.muted }}
                     >
-                      {canSubmit ? "Add vehicle" : "Fill in all fields"}
+                      {canSubmit
+                        ? "Submit Vehicle"
+                        : "Complete Required Fields"}
                     </Text>
                   </>
                 )}
@@ -615,219 +653,3 @@ export function AddVehicleModal({
     </Modal>
   );
 }
-
-// ─── StyleSheet ───────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  // Sheet
-  sheet: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    overflow: "hidden",
-  },
-  handleBar: {
-    alignItems: "center",
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    opacity: 0.5,
-  },
-  sheetHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  sheetTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-  },
-  sheetSubtitle: {
-    fontSize: 12,
-    marginTop: 3,
-    lineHeight: 17,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  // Info banner
-  infoBanner: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 18,
-  },
-  bannerTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  bannerBody: {
-    fontSize: 11,
-    marginTop: 3,
-    lineHeight: 16,
-  },
-
-  // Field layout
-  fieldLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 6,
-    paddingLeft: 2,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    minHeight: 52,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "600",
-    paddingVertical: 0,
-  },
-
-  // Input layout arrangements
-  inputRowSplit: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-  },
-  inputColStack: {
-    flexDirection: "column",
-  },
-
-  // Seat selector
-  seatRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    minHeight: 52,
-  },
-  seatBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  seatBtnText: {
-    fontSize: 20,
-    fontWeight: "700",
-    lineHeight: 24,
-  },
-  seatBtnTextWhite: {
-    fontSize: 20,
-    fontWeight: "700",
-    lineHeight: 24,
-    color: "#fff",
-  },
-  seatCenter: {
-    alignItems: "center",
-  },
-  seatCount: {
-    fontSize: 17,
-    fontWeight: "800",
-    lineHeight: 20,
-  },
-  seatUnit: {
-    fontSize: 9,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginTop: 1,
-  },
-
-  // Upload cards
-  uploadRow: {
-    flexDirection: "row",
-  },
-  uploadCard: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    borderRadius: 20,
-    padding: 14,
-    minHeight: 130,
-    justifyContent: "space-between",
-  },
-  uploadIconBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  uploadTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 10,
-  },
-  uploadSubtitle: {
-    fontSize: 11,
-    marginTop: 2,
-    lineHeight: 15,
-  },
-  uploadStatus: {
-    fontSize: 11,
-    fontWeight: "700",
-    marginTop: 8,
-  },
-
-  // Error
-  errorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 5,
-    paddingLeft: 2,
-  },
-  errorText: {
-    fontSize: 11,
-    color: "#EF4444",
-    fontWeight: "600",
-  },
-
-  // Submit button
-  submitBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: 18,
-    paddingVertical: 15,
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  submitBtnText: {
-    fontSize: 15,
-    fontWeight: "800",
-  },
-});
