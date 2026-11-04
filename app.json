@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "PoolShare",
@@ -7,6 +8,7 @@
     "icon": "./assets/images/1024.png",
     "scheme": "poolshare",
     "userInterfaceStyle": "automatic",
+
     "ios": {
       "icon": "./assets/images/1024.png",
       "infoPlist": {
@@ -14,10 +16,11 @@
         "NSDocumentsFolderUsageDescription": "Allow PoolShare to access your documents folder to upload RC certificates."
       }
     },
+
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/adaptive.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#020817"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.pintu7787.carpooling",
@@ -31,10 +34,12 @@
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
       ]
     },
+
     "web": {
       "output": "static",
       "favicon": "./assets/icons/favicon.png"
     },
+
     "plugins": [
       "expo-image",
       "expo-web-browser",
@@ -46,7 +51,7 @@
         {
           "backgroundColor": "#020817",
           "image": "./assets/images/notification-icon.png",
-          "imageWidth": 135,
+          "imageWidth": 180,
           "resizeMode": "contain"
         }
       ],
@@ -72,16 +77,19 @@
       "expo-secure-store",
       "@react-native-community/datetimepicker"
     ],
+
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
+
     "extra": {
       "router": {},
       "eas": {
         "projectId": "68ee12f4-35d7-4123-9032-865c39e14d58"
       }
     },
+
     "owner": "maastrix01"
   }
 }
