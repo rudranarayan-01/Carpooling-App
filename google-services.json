@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "1027935430370",
-    "project_id": "poolshare-5474b",
-    "storage_bucket": "poolshare-5474b.firebasestorage.app"
+    "project_number": "142606382949",
+    "project_id": "poolshare-b58aa",
+    "storage_bucket": "poolshare-b58aa.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1027935430370:android:c3261f3151eb04129420bb",
+        "mobilesdk_app_id": "1:142606382949:android:97650db1a02fadb1a5938c",
         "android_client_info": {
           "package_name": "com.rudranarayan.maastrix.carpooling"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDmTmaRvPf5A4K3qMm7gjNCZUNYgKRdkS0"
+          "current_key": "AIzaSyAdtvHBrvhzShPAKRy2RTfl3Eax2GBd6b0"
         }
       ],
       "services": {
