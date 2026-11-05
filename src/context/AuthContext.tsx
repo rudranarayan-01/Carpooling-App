@@ -1,4 +1,4 @@
-import { logger } from "@/lib/logger";
+import { APIlogger } from "@/lib/logger";
 import {
   clearAuthTokens,
   getAccessToken,
@@ -89,9 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (payload: LoginPayload) => {
     const response = await loginApi(payload);
-
-    logger.auth("LOGIN SUCCESS", response);
-
+    APIlogger.auth("LOGIN SUCCESS", response);
     const { accessToken, refreshToken } = extractTokens(response);
 
     await saveAuthTokens({
@@ -117,18 +115,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await logoutApi();
-    } catch {}
+      queryClient.cancelQueries();
 
-    queryClient.clear();
-    await clearAuthTokens();
-    setUser(null);
+      await logoutApi().catch(() => { });
+      await clearAuthTokens();
+
+      queryClient.clear();
+      setUser(null);
+    } catch {
+      await clearAuthTokens();
+      queryClient.clear();
+      setUser(null);
+    }
   };
 
   const refreshUser = async () => {
     const response = await meApi();
     setUser(response.data.user);
   };
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <AuthContext.Provider

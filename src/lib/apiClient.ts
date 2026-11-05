@@ -1,13 +1,19 @@
 import { API_URL } from "@/config/apiConfig";
-import { logger } from "@/lib/logger";
 import {
   clearAuthTokens,
   getAccessToken,
   getRefreshToken,
   saveAuthTokens,
 } from "@/lib/storage";
+import { APIlogger } from "./logger";
 
 let refreshPromise: Promise<string | null> | null = null;
+
+type ApiClientOptions = RequestInit & {
+  auth?: boolean;
+  _retry?: boolean;
+  isFormData?: boolean;
+};
 
 async function refreshAccessToken() {
   if (refreshPromise) {
@@ -84,10 +90,7 @@ async function parseResponse(response: Response) {
   }
 }
 
-function buildHeaders(
-  options: RequestInit & { auth?: boolean },
-  token?: string | null,
-) {
+function buildHeaders(options: ApiClientOptions, token?: string | null) {
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> | undefined),
   };
@@ -95,7 +98,7 @@ function buildHeaders(
   const hasBody =
     options.body !== undefined && options.body !== null && options.body !== "";
 
-  if (hasBody) {
+  if (hasBody && !options.isFormData) {
     headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
@@ -118,10 +121,7 @@ function getBodyForLog(options: RequestInit) {
 
 export async function apiClient(
   endpoint: string,
-  options: RequestInit & {
-    auth?: boolean;
-    _retry?: boolean;
-  } = {},
+  options: ApiClientOptions = {},
 ) {
   const url = `${API_URL}${endpoint}`;
   const token = await getAccessToken();
@@ -130,9 +130,10 @@ export async function apiClient(
     options.body !== undefined && options.body !== null && options.body !== "";
 
   const headers = buildHeaders(options, token);
+  const { isFormData, _retry, auth, ...cleanOptions } = options;
 
   const fetchOptions: RequestInit = {
-    ...options,
+    ...cleanOptions,
     headers,
   };
 
@@ -140,7 +141,7 @@ export async function apiClient(
     delete fetchOptions.body;
   }
 
-  logger.request(url, options.method || "GET", getBodyForLog(options));
+  APIlogger.request(url, options.method || "GET", getBodyForLog(options));
 
   const response = await fetch(url, fetchOptions);
   const data = await parseResponse(response);
@@ -149,7 +150,7 @@ export async function apiClient(
     const newAccessToken = await refreshAccessToken();
 
     if (!newAccessToken) {
-      logger.error(url, {
+      APIlogger.error(url, {
         status: response.status,
         data,
       });
@@ -164,7 +165,7 @@ export async function apiClient(
   }
 
   if (!response.ok) {
-    logger.error(url, {
+    APIlogger.error(url, {
       status: response.status,
       data,
     });
@@ -172,7 +173,7 @@ export async function apiClient(
     throw new Error(data?.message || "Something went wrong");
   }
 
-  logger.response(url, data);
+  APIlogger.response(url, data);
 
   return data;
 }

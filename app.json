@@ -1,44 +1,57 @@
 {
   "expo": {
-    "name": "Car Pooling",
-    "slug": "car-pooling",
+    "name": "PoolShare",
+    "slug": "pool-sharing",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "carpooling",
+    "icon": "./assets/images/1024.png",
+    "scheme": "poolshare",
     "userInterfaceStyle": "automatic",
+
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/1024.png",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Allow PoolShare to access your photo library to upload vehicle photos.",
+        "NSDocumentsFolderUsageDescription": "Allow PoolShare to access your documents folder to upload RC certificates."
+      }
     },
+
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/icons/adaptive.png",
+        "backgroundColor": "#020817"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.pintu7787.carpooling",
+      "package": "com.rudranarayan.maastrix.carpooling",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
       ]
     },
+
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/icons/favicon.png"
     },
+
     "plugins": [
+      "expo-image",
+      "expo-web-browser",
+      "expo-font",
+      "expo-status-bar",
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
-          }
+          "backgroundColor": "#020817",
+          "image": "./assets/images/notification-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain"
         }
       ],
       [
@@ -50,28 +63,32 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification-icon.png",
-          "color": "#0066CC"
+          "icon": "./assets/images/ic_stat_icons8_car_64_1.png",
+          "color": "#ffffff"
         }
       ],
       [
         "react-native-maps",
         {
-          "androidGoogleMapsApiKey": "AIzaSyA6TPZIQC9LeCTINXF2wl5imoDwXFXMB2Y"
+          "androidGoogleMapsApiKey": "AIzaSyCUXqyqz3g5znIwsuaGP6qeGPkNxK5ZChg"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ],
+
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
+
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "af801575-a894-41b8-abe4-b0d9696097ad"
+        "projectId": "8bbd67b9-b791-49d0-a2a5-740498e5a33b"
       }
     },
-    "owner": "pintu7787"
+
+    "owner": "rudranarayan.maastrix"
   }
 }

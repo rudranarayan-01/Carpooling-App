@@ -1,4 +1,7 @@
 import { useConfirm } from "@/components/common/ConfirmProvider";
+import SlideActionButton from "@/components/SlideActionButton";
+import { respondToBookingApi } from "@/services/booking.service";
+import { getRoomByBookingApi } from "@/services/chat.service";
 import {
     cancelRideApi,
     completeRideApi,
@@ -7,13 +10,16 @@ import {
     updateRideApi,
 } from "@/services/ride.service";
 import { useAppTheme } from "@/theme/ThemeProvider";
+import { getStatusTheme, normalizeStatus } from "@/utils/statusTheme";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import {
     ArrowLeft,
     Calendar,
     Car,
+    Check,
     IndianRupee,
+    MessageCircle,
     Minus,
     Navigation,
     Pencil,
@@ -39,7 +45,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
 
 type ActiveTab = "overview" | "bookings";
@@ -95,6 +101,10 @@ export default function DriverRideDetailsScreen() {
     const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
     const [editVisible, setEditVisible] = useState(false);
 
+    const insets = useSafeAreaInsets();
+    const bottomInset = Math.max(insets.bottom, 16);
+    const ACTION_BAR_HEIGHT = 96 + bottomInset;
+
     const { data, isLoading, isError, isFetching, refetch } = useQuery({
         queryKey: ["driver-ride-details", id],
         queryFn: () => getDriverRideDetailsApi(id!),
@@ -125,6 +135,33 @@ export default function DriverRideDetailsScreen() {
         },
     });
 
+    const respondBookingMutation = useMutation({
+        mutationFn: ({
+            bookingId,
+            status,
+        }: {
+            bookingId: string;
+            status: "accepted" | "rejected";
+        }) => respondToBookingApi(bookingId, status),
+        onSuccess: async (_, variables) => {
+            toast.success(
+                variables.status === "accepted"
+                    ? "Booking accepted successfully."
+                    : "Booking rejected successfully.",
+            );
+
+            await queryClient.invalidateQueries({
+                queryKey: ["driver-ride-details", id],
+            });
+            await queryClient.invalidateQueries({ queryKey: ["my-rides"] });
+            await queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+            await queryClient.invalidateQueries({ queryKey: ["rides"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Unable to update booking.");
+        },
+    });
+
     const completeMutation = useMutation({
         mutationFn: completeRideApi,
         onSuccess: async () => {
@@ -137,6 +174,57 @@ export default function DriverRideDetailsScreen() {
             toast.error(error?.message || "Unable to complete ride.");
         },
     });
+
+    const handleRespondBooking = async (
+        booking: DriverBookingUi,
+        status: "accepted" | "rejected",
+    ) => {
+        const ok = await confirm({
+            title: status === "accepted" ? "Accept booking?" : "Reject booking?",
+            message:
+                status === "accepted"
+                    ? "Passenger will be notified and chat will be enabled."
+                    : "Passenger will be notified and seats will be released.",
+            confirmText: status === "accepted" ? "Accept" : "Reject",
+            cancelText: "Cancel",
+            danger: status === "rejected",
+            iconType: status === "accepted" ? "success" : undefined,
+        });
+
+        if (!ok) return;
+
+        respondBookingMutation.mutate({
+            bookingId: booking.id,
+            status,
+        });
+    };
+
+    const handleOpenBookingChat = async (booking: DriverBookingUi) => {
+        try {
+            if (booking.status !== "accepted") {
+                toast.error("Chat is available after accepting the booking.");
+                return;
+            }
+
+            const response = await getRoomByBookingApi(booking.id);
+            const roomId = response?.data?.room?.id;
+
+            if (!roomId) {
+                toast.error("Chat room not available.");
+                return;
+            }
+
+            router.push({
+                pathname: "/chat/[roomId]",
+                params: {
+                    roomId: String(roomId),
+                    title: booking.passengerName,
+                },
+            });
+        } catch (error: any) {
+            toast.error(error?.message || "Unable to open chat.");
+        }
+    };
 
     const handleStartRide = async () => {
         if (!ride) return;
@@ -154,20 +242,14 @@ export default function DriverRideDetailsScreen() {
         startMutation.mutate(ride.id);
     };
 
+
     const handleCompleteRide = async () => {
         if (!ride) return;
-
-        const ok = await confirm({
-            title: "Complete ride?",
-            message: "This will mark the ride and related bookings as completed.",
-            confirmText: "Complete Ride",
-            cancelText: "Not Yet",
-            iconType: "success",
-        });
-
-        if (!ok) return;
-
-        completeMutation.mutate(ride.id);
+        try {
+            completeMutation.mutate(ride.id);
+        } catch (error) {
+            toast.error("Unable to complete ride.")
+        }
     };
 
     const cancelMutation = useMutation({
@@ -226,10 +308,23 @@ export default function DriverRideDetailsScreen() {
 
     const handleViewMap = () => {
         if (!ride) return;
-
         router.push({
             pathname: "/ride-map/[id]" as any,
-            params: { id: ride.id },
+            params: { id: ride.id, mode: "preview" },
+        });
+    };
+
+    const handleOpenGoogleMaps = () => {
+        if (!ride) return;
+        const destination = encodeURIComponent(ride.fullTo || ride.to);
+        const url = Platform.OS === "ios"
+            ? `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`
+            : `google.navigation:q=${destination}`;
+
+        Linking.openURL(url).catch(() => {
+            Linking.openURL(
+                `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`,
+            );
         });
     };
 
@@ -255,15 +350,28 @@ export default function DriverRideDetailsScreen() {
     }
 
     const statusTheme = getStatusTheme(ride.status, colors);
-    const canCancel = ride.status !== "cancelled" && ride.status !== "ongoing" && ride.status !== "completed";
-    const canEdit = ride.status === "scheduled";
-    const canStart = ride.status === "scheduled";
-    const canComplete = ride.status === "ongoing";
+    const normalizedRideStatus = normalizeStatus(ride.status);
+
+    const canCancel =
+        normalizedRideStatus !== "cancelled" &&
+        normalizedRideStatus !== "ongoing" &&
+        normalizedRideStatus !== "completed";
+
+    const canEdit = normalizedRideStatus === "scheduled";
+    const canStart = normalizedRideStatus === "scheduled";
+    const canComplete = normalizedRideStatus === "ongoing";
     const isActionLoading = startMutation.isPending || completeMutation.isPending || cancelMutation.isPending;
 
     return (
         <View style={{ flex: 1, backgroundColor: colors.bg }}>
             <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+                <DriverRideHeader
+                    title="Ride Details"
+                    subtitle="Driver view"
+                    statusLabel={statusTheme.label}
+                    statusBg={statusTheme.bg}
+                    statusColor={statusTheme.text}
+                />
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     refreshControl={
@@ -271,32 +379,10 @@ export default function DriverRideDetailsScreen() {
                     }
                     contentContainerStyle={{
                         paddingHorizontal: 20,
-                        paddingTop: Platform.OS === "android" ? 16 : 12,
-                        paddingBottom: canCancel ? 165 : 120,
+                        paddingTop: 16,
+                        paddingBottom: ACTION_BAR_HEIGHT + 36,
                     }}
                 >
-                    <View className="flex-row items-center justify-between">
-                        <TouchableOpacity
-                            activeOpacity={0.85}
-                            onPress={() => router.back()}
-                            style={{
-                                backgroundColor: colors.card,
-                                borderColor: colors.border,
-                            }}
-                            className="h-11 w-11 items-center justify-center rounded-full border"
-                        >
-                            <ArrowLeft size={22} color={colors.text} />
-                        </TouchableOpacity>
-
-                        <View
-                            style={{ backgroundColor: statusTheme.bg }}
-                            className="rounded-full px-4 py-2"
-                        >
-                            <Text style={{ color: statusTheme.text }} className="text-xs font-extrabold">
-                                {statusTheme.label}
-                            </Text>
-                        </View>
-                    </View>
 
                     <View
                         style={{
@@ -334,6 +420,7 @@ export default function DriverRideDetailsScreen() {
                         </View>
                     </View>
 
+
                     <View className="mt-5 flex-row gap-3">
                         <MiniStat icon={<Ticket size={17} color={colors.primary} />} label="Bookings" value={`${bookings.length}`} />
                         <MiniStat icon={<Users size={17} color={colors.success} />} label="Available" value={`${ride.availableSeats}/${ride.totalSeats}`} />
@@ -364,9 +451,20 @@ export default function DriverRideDetailsScreen() {
                     </View>
 
                     {activeTab === "overview" ? (
-                        <OverviewTab ride={ride} onViewMap={handleViewMap} />
+                        <OverviewTab
+                            ride={ride}
+                            onViewMap={handleViewMap}
+                            onOpenGoogleMaps={handleOpenGoogleMaps}
+                            canNavigate={normalizedRideStatus === "ongoing"}
+                        />
                     ) : (
-                        <BookingsTab bookings={bookings} onCallPassenger={handleCallPassenger} />
+                        <BookingsTab
+                            bookings={bookings}
+                            onCallPassenger={handleCallPassenger}
+                            onRespondBooking={handleRespondBooking}
+                            onOpenChat={handleOpenBookingChat}
+                            responding={respondBookingMutation.isPending}
+                        />
                     )}
                 </ScrollView>
 
@@ -374,9 +472,11 @@ export default function DriverRideDetailsScreen() {
                     style={{
                         backgroundColor: colors.card,
                         borderTopColor: colors.border,
+                        paddingBottom: bottomInset + 14,
+                        paddingTop: 14,
                         ...cardShadow,
                     }}
-                    className="absolute bottom-0 left-0 right-0 rounded-t-[28px] border-t px-5 pb-8 pt-4"
+                    className="absolute bottom-0 left-0 right-0 rounded-t-[28px] border-t px-5 pt-4"
                 >
                     <View className="flex-row gap-3">
                         {canEdit && (
@@ -418,25 +518,15 @@ export default function DriverRideDetailsScreen() {
                         )}
 
                         {canComplete && (
-                            <TouchableOpacity
-                                activeOpacity={0.85}
-                                onPress={handleCompleteRide}
-                                disabled={isActionLoading}
-                                style={{
-                                    backgroundColor: colors.success,
-                                    opacity: isActionLoading ? 0.7 : 1,
-                                }}
-                                className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl py-4"
-                            >
-                                {completeMutation.isPending ? (
-                                    <ActivityIndicator color="#FFFFFF" />
-                                ) : (
-                                    <>
-                                        <Ticket size={18} color="#FFFFFF" />
-                                        <Text className="font-extrabold text-white">Complete</Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
+                            <View className="flex-1">
+                                <SlideActionButton
+                                    label="Slide to Complete"
+                                    completedLabel="Completing..."
+                                    loading={completeMutation.isPending}
+                                    disabled={isActionLoading}
+                                    onComplete={handleCompleteRide}
+                                />
+                            </View>
                         )}
 
                         {canCancel && (
@@ -480,7 +570,17 @@ export default function DriverRideDetailsScreen() {
     );
 }
 
-function OverviewTab({ ride, onViewMap }: { ride: DriverRideUi; onViewMap: () => void }) {
+function OverviewTab({
+    ride,
+    onViewMap,
+    onOpenGoogleMaps,
+    canNavigate
+}: {
+    ride: DriverRideUi;
+    onViewMap: () => void;
+    onOpenGoogleMaps: () => void;
+    canNavigate: boolean;
+}) {
     const { colors } = useAppTheme();
 
     return (
@@ -498,18 +598,30 @@ function OverviewTab({ ride, onViewMap }: { ride: DriverRideUi; onViewMap: () =>
                     value={`${ride.vehicle} • ${ride.color} • ${ride.registrationNumber}`}
                 />
 
-                <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={onViewMap}
-                    style={{ backgroundColor: colors.primarySoft }}
-                    className="flex-row items-center justify-center gap-2 rounded-2xl py-4"
-                >
-                    <Navigation size={18} color={colors.primary} />
-                    <Text style={{ color: colors.primary }} className="font-extrabold">
-                        View Route Map
-                    </Text>
-                </TouchableOpacity>
+                <View className="gap-3">
+                    <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={canNavigate ? onOpenGoogleMaps : onViewMap}
+                        style={{
+                            backgroundColor: canNavigate ? colors.primary : colors.primarySoft,
+                        }}
+                        className="mt-2 min-h-[54px] flex-row items-center justify-center gap-2 rounded-2xl px-4">
+                        <Navigation
+                            size={20}
+                            color={canNavigate ? "#FFFFFF" : colors.primary} />
+                        <Text
+                            style={{
+                                color: canNavigate ? "#FFFFFF" : colors.primary,
+                            }}
+                            className="font-extrabold"
+                            numberOfLines={1}
+                        >
+                            {canNavigate ? "Navigate with Google Maps" : "View Route Preview"}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </SectionCard>
+
 
             <SectionCard title="Ride Settings">
                 <View className="flex-row flex-wrap gap-2">
@@ -526,9 +638,18 @@ function OverviewTab({ ride, onViewMap }: { ride: DriverRideUi; onViewMap: () =>
 function BookingsTab({
     bookings,
     onCallPassenger,
+    onRespondBooking,
+    onOpenChat,
+    responding,
 }: {
     bookings: DriverBookingUi[];
     onCallPassenger: (phone?: string | null) => void;
+    onRespondBooking: (
+        booking: DriverBookingUi,
+        status: "accepted" | "rejected",
+    ) => void;
+    onOpenChat: (booking: DriverBookingUi) => void;
+    responding?: boolean;
 }) {
     const { colors } = useAppTheme();
 
@@ -559,16 +680,39 @@ function BookingsTab({
                 <PassengerCard
                     key={booking.id}
                     booking={booking}
+                    responding={responding}
                     onCall={() => onCallPassenger(booking.passengerPhone)}
+                    onAccept={() => onRespondBooking(booking, "accepted")}
+                    onReject={() => onRespondBooking(booking, "rejected")}
+                    onChat={() => onOpenChat(booking)}
                 />
             ))}
         </View>
     );
 }
 
-function PassengerCard({ booking, onCall }: { booking: DriverBookingUi; onCall: () => void }) {
+function PassengerCard({
+    booking,
+    onCall,
+    onAccept,
+    onReject,
+    onChat,
+    responding,
+}: {
+    booking: DriverBookingUi;
+    onCall: () => void;
+    onAccept: () => void;
+    onReject: () => void;
+    onChat: () => void;
+    responding?: boolean;
+}) {
     const { colors } = useAppTheme();
-    const statusTheme = getBookingStatusTheme(booking.status, colors);
+    const normalizedStatus = normalizeStatus(booking.status);
+    const statusTheme = getStatusTheme(normalizedStatus, colors);
+
+    const isPending = normalizedStatus === "pending";
+    const canContactPassenger =
+        normalizedStatus === "confirmed" || normalizedStatus === "ongoing";
 
     return (
         <View
@@ -581,43 +725,124 @@ function PassengerCard({ booking, onCall }: { booking: DriverBookingUi; onCall: 
         >
             <View className="flex-row items-center justify-between gap-3">
                 <View className="flex-row flex-1 items-center gap-3">
-                    <View style={{ backgroundColor: colors.primarySoft }} className="h-12 w-12 items-center justify-center rounded-full">
+                    <View
+                        style={{ backgroundColor: colors.primarySoft }}
+                        className="h-12 w-12 items-center justify-center rounded-full"
+                    >
                         <User size={22} color={colors.primary} />
                     </View>
 
                     <View className="flex-1">
-                        <Text style={{ color: colors.text }} className="font-extrabold" numberOfLines={1}>
+                        <Text
+                            style={{ color: colors.text }}
+                            className="font-extrabold"
+                            numberOfLines={1}
+                        >
                             {booking.passengerName}
                         </Text>
-                        <Text style={{ color: colors.muted }} className="mt-1 text-xs font-semibold">
-                            {booking.seats} seat{booking.seats > 1 ? "s" : ""} • ₹{booking.totalPrice}
+
+                        <Text
+                            style={{ color: colors.muted }}
+                            className="mt-1 text-xs font-semibold"
+                        >
+                            {booking.seats} seat{booking.seats > 1 ? "s" : ""} • ₹
+                            {booking.totalPrice}
                         </Text>
                     </View>
                 </View>
 
-                <View style={{ backgroundColor: statusTheme.bg }} className="rounded-full px-3 py-1.5">
+                <View
+                    style={{ backgroundColor: statusTheme.bg }}
+                    className="rounded-full px-3 py-1.5"
+                >
                     <Text style={{ color: statusTheme.text }} className="text-xs font-bold">
                         {statusTheme.label}
                     </Text>
                 </View>
             </View>
 
-            <View style={{ borderTopColor: colors.border }} className="mt-4 flex-row items-center justify-between border-t pt-4">
-                <Text style={{ color: colors.muted }} className="text-xs font-bold">
-                    {formatDate(booking.createdAt)}
-                </Text>
-
-                <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={onCall}
-                    style={{ backgroundColor: colors.primarySoft }}
-                    className="flex-row items-center gap-2 rounded-full px-4 py-2"
-                >
-                    <Phone size={15} color={colors.primary} />
-                    <Text style={{ color: colors.primary }} className="text-xs font-bold">
-                        Call
+            <View
+                style={{ borderTopColor: colors.border }}
+                className="mt-4 border-t pt-4"
+            >
+                <View className="flex-row items-center justify-between">
+                    <Text style={{ color: colors.muted }} className="text-xs font-bold">
+                        {formatDate(booking.createdAt)}
                     </Text>
-                </TouchableOpacity>
+
+                    <View className="flex-row gap-2">
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            onPress={onCall}
+                            style={{ backgroundColor: colors.primarySoft }}
+                            className="h-10 w-10 items-center justify-center rounded-full"
+                        >
+                            <Phone size={16} color={colors.primary} />
+                        </TouchableOpacity>
+
+                        {canContactPassenger && (
+                            <TouchableOpacity
+                                activeOpacity={0.85}
+                                onPress={onChat}
+                                style={{ backgroundColor: colors.primary }}
+                                className="h-10 w-10 items-center justify-center rounded-full"
+                            >
+                                <MessageCircle size={17} color="#FFFFFF" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+
+                {isPending && (
+                    <View className="mt-4 flex-row gap-3">
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            onPress={onReject}
+                            disabled={responding}
+                            style={{
+                                backgroundColor: colors.dangerSoft,
+                                opacity: responding ? 0.7 : 1,
+                            }}
+                            className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl py-3"
+                        >
+                            <X size={16} color={colors.danger} />
+                            <Text style={{ color: colors.danger }} className="font-extrabold">
+                                Reject
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            onPress={onAccept}
+                            disabled={responding}
+                            style={{
+                                backgroundColor: colors.success,
+                                opacity: responding ? 0.7 : 1,
+                            }}
+                            className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl py-3"
+                        >
+                            {responding ? (
+                                <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                                <>
+                                    <Check size={16} color="#FFFFFF" />
+                                    <Text className="font-extrabold text-white">Accept</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {canContactPassenger && (
+                    <View
+                        style={{ backgroundColor: "rgba(34,197,94,0.14)" }}
+                        className="mt-4 rounded-2xl px-4 py-3"
+                    >
+                        <Text style={{ color: colors.success }} className="text-xs font-bold">
+                            Passenger contact is enabled for this booking.
+                        </Text>
+                    </View>
+                )}
             </View>
         </View>
     );
@@ -670,7 +895,7 @@ function EditRideModal({
         }
 
         onSubmit({
-            price_per_seat: priceNumber,
+            price_per_km: priceNumber,
             available_seats: availableSeats,
             pet_allowed: petAllowed ? "yes" : "no",
             smoking_allowed: smokingAllowed ? "yes" : "no",
@@ -714,7 +939,7 @@ function EditRideModal({
                         <View className="gap-4">
                             <View>
                                 <Text style={{ color: colors.muted }} className="mb-2 text-xs font-bold uppercase">
-                                    Price per seat
+                                    Price per KM
                                 </Text>
                                 <View
                                     style={{ backgroundColor: colors.input }}
@@ -995,7 +1220,7 @@ function mapRideToUi(ride: any): DriverRideUi {
         fullTo: ride.destination_address || "",
         date: ride.ride_date || "",
         time: ride.departure_time || "",
-        price: Number(ride.price_per_seat || 0),
+        price: Number(ride.price_per_km || ride.price_per_seat || 0),
         totalSeats: Number(ride.total_seats || 0),
         availableSeats: Number(ride.available_seats || 0),
         status: ride.status || "scheduled",
@@ -1070,112 +1295,146 @@ function formatDuration(seconds: number) {
     return remaining > 0 ? `${hours} hr ${remaining} min` : `${hours} hr`;
 }
 
-function getStatusTheme(status: string, colors: ReturnType<typeof useAppTheme>["colors"]) {
-    const value = String(status || "").toLowerCase();
-
-    if (value === "ongoing") {
-        return {
-            label: "In Progress", bg: colors.primarySoft, text: colors.primary,
-        };
-    }
-
-    if (value === "cancelled") {
-        return { label: "Cancelled", bg: colors.dangerSoft, text: colors.danger };
-    }
-
-    if (value === "completed") {
-        return { label: "Completed", bg: colors.primarySoft, text: colors.primary };
-    }
-
-    return { label: "Scheduled", bg: "rgba(34,197,94,0.14)", text: colors.success };
-}
-
-function getBookingStatusTheme(status: string, colors: ReturnType<typeof useAppTheme>["colors"]) {
-    const value = String(status || "").toLowerCase();
-
-    if (value === "cancelled") {
-        return { label: "Cancelled", bg: colors.dangerSoft, text: colors.danger };
-    }
-
-    if (value === "confirmed") {
-        return { label: "Confirmed", bg: "rgba(34,197,94,0.14)", text: colors.success };
-    }
-
-    if (value === "completed") {
-        return { label: "Completed", bg: colors.primarySoft, text: colors.primary };
-    }
-
-    return { label: "Pending", bg: colors.primarySoft, text: colors.primary };
-}
 
 function PaymentReceivedCard({
-  totalAmount,
-  totalBookings,
+    totalAmount,
+    totalBookings,
 }: {
-  totalAmount: number;
-  totalBookings: number;
+    totalAmount: number;
+    totalBookings: number;
 }) {
-  const { colors } = useAppTheme();
+    const { colors } = useAppTheme();
 
-  return (
-    <View
-      style={{
-        backgroundColor: colors.card,
-        borderColor: colors.border,
-        ...cardShadow,
-      }}
-      className="mt-5 overflow-hidden rounded-[30px] border p-5"
-    >
-      <View className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-green-500/10" />
-
-      <View className="flex-row items-start justify-between gap-4">
+    return (
         <View
-          style={{ backgroundColor: "rgba(34,197,94,0.14)" }}
-          className="h-12 w-12 items-center justify-center rounded-2xl"
+            style={{
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                ...cardShadow,
+            }}
+            className="mt-5 overflow-hidden rounded-[30px] border p-5"
         >
-          <IndianRupee size={22} color={colors.success} />
-        </View>
+            <View className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-green-500/10" />
 
+            <View className="flex-row items-start justify-between gap-4">
+                <View
+                    style={{ backgroundColor: "rgba(34,197,94,0.14)" }}
+                    className="h-12 w-12 items-center justify-center rounded-2xl"
+                >
+                    <IndianRupee size={22} color={colors.success} />
+                </View>
+
+                <View
+                    style={{ backgroundColor: "rgba(34,197,94,0.14)" }}
+                    className="rounded-full px-3 py-1.5"
+                >
+                    <Text style={{ color: colors.success }} className="text-xs font-bold">
+                        Cash Received
+                    </Text>
+                </View>
+            </View>
+
+            <Text style={{ color: colors.text }} className="mt-4 text-xl font-extrabold">
+                Payment Collected
+            </Text>
+
+            <Text style={{ color: colors.muted }} className="mt-2 text-sm leading-5">
+                This ride is completed. Cash payment is considered received from passengers for now.
+            </Text>
+
+            <View
+                style={{ backgroundColor: colors.input }}
+                className="mt-5 flex-row items-center justify-between rounded-2xl px-4 py-3"
+            >
+                <View>
+                    <Text style={{ color: colors.muted }} className="text-xs font-bold uppercase">
+                        Total Cash
+                    </Text>
+                    <Text style={{ color: colors.success }} className="mt-1 text-2xl font-extrabold">
+                        ₹{totalAmount}
+                    </Text>
+                </View>
+
+                <View className="items-end">
+                    <Text style={{ color: colors.muted }} className="text-xs font-bold uppercase">
+                        Bookings
+                    </Text>
+                    <Text style={{ color: colors.text }} className="mt-1 font-extrabold">
+                        {totalBookings}
+                    </Text>
+                </View>
+            </View>
+        </View>
+    );
+}
+
+function DriverRideHeader({
+    title,
+    subtitle,
+    statusLabel,
+    statusBg,
+    statusColor,
+}: {
+    title: string;
+    subtitle: string;
+    statusLabel: string;
+    statusBg: string;
+    statusColor: string;
+}) {
+    const { colors } = useAppTheme();
+
+    return (
         <View
-          style={{ backgroundColor: "rgba(34,197,94,0.14)" }}
-          className="rounded-full px-3 py-1.5"
+            style={{
+                backgroundColor: colors.bg,
+                borderBottomColor: colors.border,
+            }}
+            className="border-b px-5 pb-4 pt-3"
         >
-          <Text style={{ color: colors.success }} className="text-xs font-bold">
-            Cash Received
-          </Text>
+            <View className="flex-row items-center gap-3">
+                <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => router.back()}
+                    style={{
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                    }}
+                    className="h-11 w-11 items-center justify-center rounded-full border"
+                >
+                    <ArrowLeft size={22} color={colors.text} />
+                </TouchableOpacity>
+
+                <View className="flex-1 items-center">
+                    <Text
+                        style={{ color: colors.text }}
+                        className="text-lg font-extrabold"
+                        numberOfLines={1}
+                    >
+                        {title}
+                    </Text>
+
+                    <Text
+                        style={{ color: colors.muted }}
+                        className="mt-0.5 text-xs font-semibold"
+                        numberOfLines={1}
+                    >
+                        {subtitle}
+                    </Text>
+                </View>
+
+                <View
+                    style={{ backgroundColor: statusBg }}
+                    className="min-w-[86px] items-center rounded-full px-3 py-2"
+                >
+                    <Text
+                        style={{ color: statusColor }}
+                        className="text-[11px] font-extrabold"
+                        numberOfLines={1}
+                    >
+                        {statusLabel}
+                    </Text>
+                </View>
+            </View>
         </View>
-      </View>
-
-      <Text style={{ color: colors.text }} className="mt-4 text-xl font-extrabold">
-        Payment Collected
-      </Text>
-
-      <Text style={{ color: colors.muted }} className="mt-2 text-sm leading-5">
-        This ride is completed. Cash payment is considered received from passengers for now.
-      </Text>
-
-      <View
-        style={{ backgroundColor: colors.input }}
-        className="mt-5 flex-row items-center justify-between rounded-2xl px-4 py-3"
-      >
-        <View>
-          <Text style={{ color: colors.muted }} className="text-xs font-bold uppercase">
-            Total Cash
-          </Text>
-          <Text style={{ color: colors.success }} className="mt-1 text-2xl font-extrabold">
-            ₹{totalAmount}
-          </Text>
-        </View>
-
-        <View className="items-end">
-          <Text style={{ color: colors.muted }} className="text-xs font-bold uppercase">
-            Bookings
-          </Text>
-          <Text style={{ color: colors.text }} className="mt-1 font-extrabold">
-            {totalBookings}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
+    );
 }

@@ -17,3 +17,17 @@ To generater apk : eas build -p android --profile preview
     adb install app\build\outputs\apk\debug\app-debug.apk
 
 ## npx expo start --dev-client
+
+# Checklist Before Build
+
+1. npx expo-doctor
+2. npx expo install --check
+3. npx expo config --type public
+4. npx expo prebuild --clean --no-install
+
+cd android
+
+.\gradlew.bat clean
+
+.\gradlew.bat assembleDebug
+.\gradlew.bat assembleRelease

@@ -1,10 +1,14 @@
 import { useConfirm } from "@/components/common/ConfirmProvider";
+import { shortAddress } from "@/hooks/address-trimmer";
 import {
   cancelBookingApi,
   getBookingByIdApi,
 } from "@/services/booking.service";
+import { getRoomByBookingApi } from "@/services/chat.service";
 import { createReviewApi } from "@/services/review.service";
+import { getRideByIdApi } from "@/services/ride.service";
 import { useAppTheme } from "@/theme/ThemeProvider";
+import { AppStatus, getStatusTheme, normalizeStatus } from "@/utils/statusTheme";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -12,15 +16,14 @@ import {
   Calendar,
   Car,
   CheckCircle2,
-  IndianRupee,
-  Navigation,
+  IndianRupee, MessageCircle, Navigation,
   Phone,
   ShieldCheck,
   Star,
   Ticket,
   User,
   Users,
-  XCircle,
+  XCircle
 } from "lucide-react-native";
 import { useState } from "react";
 import {
@@ -31,12 +34,11 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
 
-type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
 const cardShadow = {
   shadowColor: "#000",
   shadowOffset: {
@@ -75,7 +77,7 @@ type BookingDetails = {
   seats: number;
   pricePerSeat: number;
   totalPrice: number;
-  status: BookingStatus;
+  status: AppStatus;
   paymentStatus: string;
   paymentType: string;
   driverName: string;
@@ -92,6 +94,10 @@ export default function BookingDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const confirm = useConfirm();
   const queryClient = useQueryClient();
+
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, Platform.OS === "android" ? 36 : 20);
+  const bottomBarHeight = 128 + bottomInset;
 
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useState("");
@@ -117,6 +123,41 @@ export default function BookingDetailsScreen() {
   const booking = data?.data?.booking
     ? mapBookingToDetails(data.data.booking)
     : null;
+
+  const { data: rideData } = useQuery({
+    queryKey: ["booking-live-ride-status", booking?.rideId],
+    queryFn: () => getRideByIdApi(booking!.rideId),
+    enabled: !!booking?.rideId,
+    refetchInterval: booking?.status === "ongoing"
+      ? 10000
+      : false,
+  });
+
+  const rideStatus = rideData?.data?.ride?.status;
+  // console.log(booking?.status)
+  const canTrackLiveRide =
+    booking?.status === "ongoing" &&
+    rideStatus === "ongoing";
+  const canContactDriver = booking?.status === "confirmed" || booking?.status === "ongoing";
+  const isRideFinished = booking?.status === "completed" || booking?.status === "cancelled";
+
+  const contactMessage = (() => {
+    switch (booking?.status) {
+      case "pending":
+        return "The driver hasn't accepted your booking yet. Call and chat will be available once it's accepted.";
+
+      case "cancelled":
+        return "This booking has been cancelled. Call and chat are no longer available.";
+
+      case "completed":
+        return "This ride has been completed. Driver contact is no longer available.";
+
+      default:
+        return "Driver contact is currently unavailable.";
+    }
+  })();
+
+
 
   const cancelMutation = useMutation({
     mutationFn: cancelBookingApi,
@@ -157,7 +198,43 @@ export default function BookingDetailsScreen() {
       return;
     }
 
-    Linking.openURL(`tel:${booking.driverPhone}`);
+    const phone = formatIndianPhoneNumber(booking.driverPhone);
+
+    if (!phone) {
+      toast.error("Invalid phone number.");
+      return;
+    }
+
+    Linking.openURL(`tel:${phone}`);
+  };
+
+  const handleOpenChat = async () => {
+    if (!booking) return;
+
+    if (!canContactDriver) {
+      toast.error("Chat is available only after the driver accepts your booking.");
+      return;
+    }
+
+    try {
+      const response = await getRoomByBookingApi(booking.id);
+      const roomId = response?.data?.room?.id;
+
+      if (!roomId) {
+        toast.error("Chat room not available yet.");
+        return;
+      }
+
+      router.push({
+        pathname: "/chat/[roomId]",
+        params: {
+          roomId: String(roomId),
+          title: booking.driverName || "Driver",
+        },
+      });
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to open chat.");
+    }
   };
 
   const handleViewMap = () => {
@@ -165,8 +242,32 @@ export default function BookingDetailsScreen() {
 
     router.push({
       pathname: "/ride-map/[id]" as any,
-      params: { id: booking.rideId },
+      params: { id: booking.rideId, mode:"preview" },
     });
+  };
+
+  const handleOpenGoogleMaps = async () => {
+    if (!booking) return;
+    try {
+      const destination = `${booking.destinationLat},${booking.destinationLng}`;
+
+      const appUrl =
+        Platform.OS === "android"
+          ? `google.navigation:q=${destination}&mode=d`
+          : `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+
+      await Linking.openURL(appUrl);
+    } catch {
+      toast.error("Unable to open Google Maps.");
+    }
+  };
+
+  const handleRideNavigation = () => {
+    if (canTrackLiveRide) {
+      handleOpenGoogleMaps();
+      return;
+    }
+    handleViewMap();
   };
 
   if (isLoading) {
@@ -193,12 +294,12 @@ export default function BookingDetailsScreen() {
   }
 
   const statusTheme = getStatusTheme(booking.status, colors);
-  const canCancel =
-    booking.status === "pending" || booking.status === "confirmed";
+  const canCancel = booking.status === "pending" || booking.status === "confirmed";
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+        <StickyBookingHeader statusTheme={statusTheme} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -206,40 +307,10 @@ export default function BookingDetailsScreen() {
           }
           contentContainerStyle={{
             paddingHorizontal: 20,
-            paddingTop: Platform.OS === "android" ? 16 : 12,
-            paddingBottom: canCancel ? 190 : 135,
+            paddingTop: 18,
+            paddingBottom: bottomBarHeight + 28,
           }}
         >
-          <View className="flex-row items-center justify-between">
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => router.back()}
-              style={{
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.12,
-                shadowRadius: 18,
-                elevation: 6,
-              }}
-              className="h-11 w-11 items-center justify-center rounded-full border"
-            >
-              <ArrowLeft size={22} color={colors.text} />
-            </TouchableOpacity>
-
-            <View
-              style={{ backgroundColor: statusTheme.bg }}
-              className="rounded-full px-4 py-2"
-            >
-              <Text
-                style={{ color: statusTheme.text }}
-                className="text-xs font-extrabold"
-              >
-                {statusTheme.label}
-              </Text>
-            </View>
-          </View>
 
           <View
             style={{
@@ -315,7 +386,7 @@ export default function BookingDetailsScreen() {
 
             <TouchableOpacity
               activeOpacity={0.85}
-              onPress={handleViewMap}
+              onPress={handleRideNavigation}
               style={{ backgroundColor: colors.primarySoft }}
               className="mt-1 flex-row items-center justify-center gap-2 rounded-2xl py-4"
             >
@@ -324,7 +395,7 @@ export default function BookingDetailsScreen() {
                 style={{ color: colors.primary }}
                 className="font-extrabold"
               >
-                View Route Map
+                {canTrackLiveRide ? "Navigate with Google Maps" : "View Route Map"}
               </Text>
             </TouchableOpacity>
           </SectionCard>
@@ -374,18 +445,53 @@ export default function BookingDetailsScreen() {
               value={booking.registrationNumber}
             />
 
-            {booking.driverPhone && (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={handleCallDriver}
+
+            {canContactDriver ? (
+              <>
+                {booking.driverPhone && (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={handleCallDriver}
+                    style={{ backgroundColor: colors.input }}
+                    className="flex-row items-center justify-center gap-2 rounded-2xl py-4"
+                  >
+                    <Phone size={18} color={colors.primary} />
+                    <Text
+                      style={{ color: colors.text }}
+                      className="font-extrabold"
+                    >
+                      Call Driver
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={handleOpenChat}
+                  style={{ backgroundColor: colors.primarySoft }}
+                  className="flex-row items-center justify-center gap-2 rounded-2xl py-4"
+                >
+                  <MessageCircle size={18} color={colors.primary} />
+                  <Text
+                    style={{ color: colors.primary }}
+                    className="font-extrabold"
+                  >
+                    Chat with Driver
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View
                 style={{ backgroundColor: colors.input }}
-                className="flex-row items-center justify-center gap-2 rounded-2xl py-4"
+                className="rounded-2xl px-4 py-4"
               >
-                <Phone size={18} color={colors.primary} />
-                <Text style={{ color: colors.text }} className="font-extrabold">
-                  Call Driver
+                <Text
+                  style={{ color: colors.muted }}
+                  className="text-center text-sm leading-5"
+                >
+                  {contactMessage}
                 </Text>
-              </TouchableOpacity>
+              </View>
             )}
           </SectionCard>
 
@@ -511,8 +617,9 @@ export default function BookingDetailsScreen() {
           style={{
             backgroundColor: colors.card,
             borderTopColor: colors.border,
+            paddingBottom: bottomInset,
           }}
-          className="absolute bottom-0 left-0 right-0 border-t rounded-t-[28px] px-5 pb-8 pt-4"
+          className="absolute bottom-0 left-0 right-0 rounded-t-[28px] border-t px-5 pt-4"
         >
           <View className="mb-4 flex-row items-center justify-between">
             <View>
@@ -540,10 +647,12 @@ export default function BookingDetailsScreen() {
             </View>
           </View>
 
-          <View className="flex-row gap-3">
+          <View className="flex-row gap-3" style={{
+            marginBottom: Platform.OS === "android" ? 8 : 0,
+          }}>
             <TouchableOpacity
               activeOpacity={0.85}
-              onPress={handleViewMap}
+              onPress={handleRideNavigation}
               style={{ backgroundColor: colors.primarySoft }}
               className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl py-4"
             >
@@ -552,7 +661,7 @@ export default function BookingDetailsScreen() {
                 style={{ color: colors.primary }}
                 className="font-extrabold"
               >
-                Map
+                {canTrackLiveRide ? "Navigate" : "Map"}
               </Text>
             </TouchableOpacity>
 
@@ -825,59 +934,36 @@ function SafetyRow({ text }: { text: string }) {
 }
 
 function mapBookingToDetails(booking: any): BookingDetails {
-  const source = booking.ride_source || "";
-  const destination = booking.ride_destination || "";
-
   return {
     id: String(booking.id),
-    code: booking.booking_code || `#${booking.id}`,
-    rideId: String(booking.ride_id),
-    from: shortAddress(source),
-    to: shortAddress(destination),
-    fullFrom: source,
-    fullTo: destination,
-    sourceLat: Number(booking.ride_source_lat || 0),
-    sourceLng: Number(booking.ride_source_lng || 0),
-    destinationLat: Number(booking.ride_destination_lat || 0),
-    destinationLng: Number(booking.ride_destination_lng || 0),
-    date: booking.ride_date || "",
-    time: booking.ride_time || "",
+    code: booking.code || `#${booking.id}`,
+    rideId: String(booking.rideId || booking.ride_id || ""),
+    from: shortAddress(booking.from || ""),
+    to: shortAddress(booking.to || ""),
+    fullFrom: booking.fullFrom || booking.from || "",
+    fullTo: booking.fullTo || booking.to || "",
+    sourceLat: Number(booking.sourceLat || 0),
+    sourceLng: Number(booking.sourceLng || 0),
+    destinationLat: Number(booking.destinationLat || 0),
+    destinationLng: Number(booking.destinationLng || 0),
+    date: booking.date || "",
+    time: booking.time || "",
     seats: Number(booking.seats || 1),
-    pricePerSeat: Number(booking.price_per_seat || 0),
-    totalPrice: Number(booking.total_price || 0),
-    status: normalizeBookingStatus(booking.status),
-    paymentStatus: booking.payment_status || "unpaid",
-    paymentType: booking.payment_type || "cash",
-    driverName: booking.driver_name || "Driver",
-    driverPhone: booking.driver_phone || null,
-    car: `${booking.brand || ""} ${booking.model || ""}`.trim() || "Vehicle",
-    registrationNumber: booking.registration_number || "Not available",
+    pricePerSeat: Number(booking.pricePerSeat || 0),
+    totalPrice: Number(booking.totalPrice || 0),
+    status: normalizeStatus(booking.status),
+    paymentStatus: booking.paymentStatus || "unpaid",
+    paymentType: booking.paymentType || "cash",
+    driverName: booking.driverName || "Driver",
+    driverPhone: booking.driverPhone || null,
+    car: booking.car || "Vehicle",
+    registrationNumber: booking.registrationNumber || "Not available",
     color: booking.color || "Vehicle",
-    driverId: String(booking.driver_id || ""),
-    hasReviewed: Boolean(booking.has_reviewed),
+    driverId: String(booking.driverId || ""),
+    hasReviewed: Boolean(booking.hasReviewed),
   };
 }
 
-function normalizeBookingStatus(status?: string): BookingStatus {
-  const value = String(status || "").toLowerCase();
-
-  if (["confirmed", "accepted"].includes(value)) return "confirmed";
-  if (["cancelled", "canceled", "rejected"].includes(value)) return "cancelled";
-  if (["completed", "complete"].includes(value)) return "completed";
-
-  return "pending";
-}
-
-function shortAddress(address?: string) {
-  if (!address) return "";
-
-  return address
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, 3)
-    .join(", ");
-}
 
 function formatDisplayDate(value?: string) {
   if (!value) return "Date unavailable";
@@ -918,37 +1004,90 @@ function capitalize(value?: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function getStatusTheme(
-  status: BookingStatus,
-  colors: ReturnType<typeof useAppTheme>["colors"],
-) {
-  if (status === "confirmed") {
-    return {
-      label: "Confirmed",
-      bg: "rgba(34,197,94,0.14)",
-      text: colors.success,
-    };
-  }
-
-  if (status === "completed") {
-    return {
-      label: "Completed",
-      bg: colors.primarySoft,
-      text: colors.primary,
-    };
-  }
-
-  if (status === "cancelled") {
-    return {
-      label: "Cancelled",
-      bg: colors.dangerSoft,
-      text: colors.danger,
-    };
-  }
-
-  return {
-    label: "Pending",
-    bg: colors.primarySoft,
-    text: colors.primary,
+function StickyBookingHeader({
+  statusTheme,
+}: {
+  statusTheme: {
+    label: string;
+    bg: string;
+    text: string;
   };
+}) {
+  const { colors } = useAppTheme();
+
+  return (
+    <View
+      style={{
+        backgroundColor: colors.bg,
+        borderBottomColor: colors.border,
+      }}
+      className="border-b px-5 pb-4 pt-3"
+    >
+      <View className="flex-row items-center gap-3">
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => router.back()}
+          style={{
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+          }}
+          className="h-11 w-11 items-center justify-center rounded-full border"
+        >
+          <ArrowLeft size={22} color={colors.text} />
+        </TouchableOpacity>
+
+        <View className="flex-1 items-center">
+          <Text
+            style={{ color: colors.text }}
+            className="text-lg font-extrabold"
+            numberOfLines={1}
+          >
+            Booking Details
+          </Text>
+
+          <Text
+            style={{ color: colors.muted }}
+            className="mt-0.5 text-xs font-semibold"
+            numberOfLines={1}
+          >
+            Trip, driver & payment summary
+          </Text>
+        </View>
+
+        <View
+          style={{ backgroundColor: statusTheme.bg }}
+          className="rounded-full px-3 py-2"
+        >
+          <Text
+            style={{ color: statusTheme.text }}
+            className="text-[11px] font-extrabold"
+            numberOfLines={1}
+          >
+            {statusTheme.label}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
 }
+
+const formatIndianPhoneNumber = (phone?: string | null) => {
+  if (!phone) return null;
+
+  // Remove spaces, hyphens, brackets, etc.
+  let normalized = phone.replace(/\D/g, "");
+
+  // Already has country code
+  if (normalized.startsWith("91") && normalized.length === 12) {
+    return `+${normalized}`;
+  }
+
+  // Normal 10-digit Indian mobile number
+  if (normalized.length === 10) {
+    return `+91${normalized}`;
+  }
+
+  // Fallback
+  return `+${normalized}`;
+};
+

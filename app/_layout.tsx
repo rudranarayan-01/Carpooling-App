@@ -5,16 +5,21 @@ import { queryClient } from "@/lib/queryClient";
 import { AppThemeProvider, useAppTheme } from "@/theme/ThemeProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
-import { useEffect } from "react";
-import { StatusBar as RNStatusBar, View } from "react-native";
+import { useEffect, useState } from "react";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Toaster } from "sonner-native";
 import "../global.css";
+import CustomSplashScreen from "../src/components/common/splashscreen";
+
+SplashScreen.preventAutoHideAsync();
 
 function AppContent() {
   const { isDark, colors } = useAppTheme();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const [isSplashTimingComplete, setIsSplashTimingComplete] = useState(false);
 
   useNotificationListeners();
 
@@ -25,151 +30,49 @@ function AppContent() {
     });
   }, [isAuthenticated, user?.id]);
 
+  const showSplash = isLoading || !isSplashTimingComplete;
+
+  if (showSplash) {
+    return (
+      <CustomSplashScreen
+        onFinish={async () => {
+          setIsSplashTimingComplete(true);
+          try {
+            await SplashScreen.hideAsync();
+          } catch (e) {
+            console.warn("Failed to hide native splash:", e);
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Stack
         screenOptions={{
           headerShown: false,
+          animation: "slide_from_right",
+          animationDuration: 100,
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
           contentStyle: {
             backgroundColor: colors.bg,
           },
         }}
       >
+        {/* Absolute Override Routes */}
         <Stack.Screen name="index" options={{ animation: "none" }} />
         <Stack.Screen name="(auth)" options={{ animation: "none" }} />
         <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
 
-        <Stack.Screen
-          name="ride/[id]"
-          options={{
-            animation: "slide_from_right",
-            animationDuration: 220,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
+        {/* Override sub-screens only if they require a unique property, like rewards */}
+        <Stack.Screen name="rewards" options={{ fullScreenGestureEnabled: false }} />
 
-        <Stack.Screen
-          name="booking/[id]"
-          options={{
-            animation: "slide_from_right",
-            animationDuration: 220,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
 
-        <Stack.Screen
-          name="settings"
-          options={{
-            animation: "slide_from_right",
-            animationDuration: 220,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
-
-        <Stack.Screen
-          name="notifications"
-          options={{
-            animation: "slide_from_right",
-            animationDuration: 220,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
-
-        <Stack.Screen
-          name="vehicles"
-          options={{
-            animation: "slide_from_right",
-            animationDuration: 220,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
-        <Stack.Screen
-          name="rewards"
-          options={{ animation: "slide_from_right" }}
-        />
-        <Stack.Screen
-          name="payments"
-          options={{
-            animation: "slide_from_right",
-            animationDuration: 220,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
-
-        <Stack.Screen
-          name="ride-map/[id]"
-          options={{
-            animation: "slide_from_right",
-            animationDuration: 220,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
-
-        <Stack.Screen
-          name="privacy-policy"
-          options={{
-            animation: "slide_from_right",
-            animationDuration: 220,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
-
-        <Stack.Screen
-          name="terms-conditions"
-          options={{
-            animation: "slide_from_right",
-            animationDuration: 220,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
-        <Stack.Screen
-          name="my-pub-rides"
-          options={{
-            animation: "slide_from_right",
-            animationDuration: 220,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
-
-        <Stack.Screen
-          name="driver-ride/[id]"
-          options={{
-            animation: "slide_from_right",
-            animationDuration: 220,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
       </Stack>
 
       <ExpoStatusBar style={isDark ? "light" : "dark"} />
-
-      <RNStatusBar
-        backgroundColor={colors.bg}
-        barStyle={isDark ? "light-content" : "dark-content"}
-        translucent={false}
-      />
     </View>
   );
 }
