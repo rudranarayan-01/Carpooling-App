@@ -19,6 +19,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/adaptive.png",
+        "monochromeImage": "./assets/icons/adaptive.png",
         "backgroundColor": "#020817"
       },
       "predictiveBackGestureEnabled": false,
@@ -64,7 +65,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/ic_stat_icons8_car_64_1.png",
-          "color": "#ffffff"
+          "color": "#0066CC"
         }
       ],
       [
