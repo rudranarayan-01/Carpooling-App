@@ -73,12 +73,14 @@ export async function registerForPushNotificationsAsync() {
   }
 
   if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "Default",
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#0066CC",
-    });
+    try {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "Default",
+        importance: Notifications.AndroidImportance.MAX,
+      });
+    } catch (error) {
+      console.log("CHANNEL SETUP FAILED:", error);
+    }
   }
 
   const existingPermission = await Notifications.getPermissionsAsync();
