@@ -23,13 +23,14 @@ import {
   Plus,
   Route,
   Users,
-  X
+  X,
 } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   Text,
@@ -37,7 +38,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { toast } from "sonner-native";
 
 type PickedPlace = {
@@ -294,6 +298,13 @@ export default function PublishRideScreen() {
     try {
       setLoadingRoutes(true);
 
+      const allowed = await ensureLocationPermission();
+      if (!allowed) {
+        toast.error("Location permission is needed to find these places.");
+        Linking.openSettings();
+        return;
+      }
+
       const source = await getFinalPlace(fromPlace, from.trim());
       const destination = await getFinalPlace(toPlace, to.trim());
 
@@ -308,12 +319,13 @@ export default function PublishRideScreen() {
 
       setRoutes(routeList);
       setSelectedRouteIndex(
-        routeList.length > 0 ? routeList[0].route_index ?? 0 : null,
+        routeList.length > 0 ? (routeList[0].route_index ?? 0) : null,
       );
 
       if (routeList.length > 0) {
         toast.success(
-          `${routeList.length} route option${routeList.length > 1 ? "s" : ""
+          `${routeList.length} route option${
+            routeList.length > 1 ? "s" : ""
           } found.`,
         );
       } else {
@@ -433,7 +445,6 @@ export default function PublishRideScreen() {
               paddingBottom: 150,
             }}
           >
-
             <PublishRouteInputCard
               from={from}
               to={to}
@@ -546,13 +557,16 @@ export default function PublishRideScreen() {
                                 style={{ color: colors.muted }}
                                 className="mt-1 text-xs font-semibold"
                               >
-                                {route.distance_text || "Distance unavailable"} •{" "}
+                                {route.distance_text || "Distance unavailable"}{" "}
+                                •{" "}
                                 {route.duration_text || "Duration unavailable"}
                               </Text>
                             </View>
                           </View>
 
-                          {selected && <Check size={20} color={colors.primary} />}
+                          {selected && (
+                            <Check size={20} color={colors.primary} />
+                          )}
                         </View>
                       </TouchableOpacity>
                     );
@@ -590,7 +604,10 @@ export default function PublishRideScreen() {
                   </Text>
                 </View>
 
-                <Text style={{ color: colors.primary }} className="text-xs font-bold">
+                <Text
+                  style={{ color: colors.primary }}
+                  className="text-xs font-bold"
+                >
                   Change
                 </Text>
               </TouchableOpacity>
@@ -618,7 +635,10 @@ export default function PublishRideScreen() {
                   </Text>
                 </View>
 
-                <Text style={{ color: colors.primary }} className="text-xs font-bold">
+                <Text
+                  style={{ color: colors.primary }}
+                  className="text-xs font-bold"
+                >
                   Change
                 </Text>
               </TouchableOpacity>
@@ -633,7 +653,8 @@ export default function PublishRideScreen() {
                     style={{ color: colors.danger }}
                     className="flex-1 text-xs font-bold leading-5"
                   >
-                    Selected departure time is already past. Please choose a future time.
+                    Selected departure time is already past. Please choose a
+                    future time.
                   </Text>
                 </View>
               )}
@@ -648,17 +669,26 @@ export default function PublishRideScreen() {
               {vehiclesLoading ? (
                 <View className="items-center py-2">
                   <ActivityIndicator color={colors.primary} />
-                  <Text style={{ color: colors.muted }} className="mt-2 text-xs font-bold">
+                  <Text
+                    style={{ color: colors.muted }}
+                    className="mt-2 text-xs font-bold"
+                  >
                     Loading vehicles...
                   </Text>
                 </View>
               ) : vehicles.length === 0 ? (
                 <View className="items-center py-4">
                   <Car size={28} color={colors.muted} />
-                  <Text style={{ color: colors.text }} className="mt-3 font-extrabold">
+                  <Text
+                    style={{ color: colors.text }}
+                    className="mt-3 font-extrabold"
+                  >
                     No vehicle added
                   </Text>
-                  <Text style={{ color: colors.muted }} className="mt-1 text-center text-xs">
+                  <Text
+                    style={{ color: colors.muted }}
+                    className="mt-1 text-center text-xs"
+                  >
                     Add a vehicle before publishing a ride.
                   </Text>
 
@@ -668,13 +698,16 @@ export default function PublishRideScreen() {
                     style={{ backgroundColor: colors.primary }}
                     className="mt-4 rounded-2xl px-5 py-3"
                   >
-                    <Text className="font-extrabold text-white">Add Vehicle</Text>
+                    <Text className="font-extrabold text-white">
+                      Add Vehicle
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <View className="gap-3">
                   {vehicles.map((vehicle: any) => {
-                    const selected = Number(selectedVehicleId) === Number(vehicle.id);
+                    const selected =
+                      Number(selectedVehicleId) === Number(vehicle.id);
 
                     return (
                       <TouchableOpacity
@@ -682,26 +715,42 @@ export default function PublishRideScreen() {
                         activeOpacity={0.85}
                         onPress={() => setSelectedVehicleId(Number(vehicle.id))}
                         style={{
-                          backgroundColor: selected ? colors.primarySoft : colors.input,
-                          borderColor: selected ? colors.primary : colors.border,
+                          backgroundColor: selected
+                            ? colors.primarySoft
+                            : colors.input,
+                          borderColor: selected
+                            ? colors.primary
+                            : colors.border,
                         }}
                         className="flex-row items-center gap-3 rounded-2xl border px-4 py-4"
                       >
                         <View
                           style={{
-                            backgroundColor: selected ? colors.primary : colors.card,
+                            backgroundColor: selected
+                              ? colors.primary
+                              : colors.card,
                           }}
                           className="h-11 w-11 items-center justify-center rounded-2xl"
                         >
-                          <Car size={20} color={selected ? "#FFFFFF" : colors.primary} />
+                          <Car
+                            size={20}
+                            color={selected ? "#FFFFFF" : colors.primary}
+                          />
                         </View>
 
                         <View className="flex-1">
-                          <Text style={{ color: colors.text }} className="font-extrabold">
+                          <Text
+                            style={{ color: colors.text }}
+                            className="font-extrabold"
+                          >
                             {vehicle.brand} {vehicle.model}
                           </Text>
-                          <Text style={{ color: colors.muted }} className="mt-1 text-xs font-semibold">
-                            {vehicle.registration_number} • {vehicle.color || "Vehicle"}
+                          <Text
+                            style={{ color: colors.muted }}
+                            className="mt-1 text-xs font-semibold"
+                          >
+                            {vehicle.registration_number} •{" "}
+                            {vehicle.color || "Vehicle"}
                           </Text>
                         </View>
 
@@ -754,7 +803,8 @@ export default function PublishRideScreen() {
                   style={{ color: colors.danger }}
                   className="flex-1 text-xs font-bold leading-5"
                 >
-                  Complete all required fields, select a future schedule, and choose a route.
+                  Complete all required fields, select a future schedule, and
+                  choose a route.
                 </Text>
               </View>
             )}
@@ -881,7 +931,10 @@ function PlaceInput({
         {icon}
 
         <View className="flex-1">
-          <Text style={{ color: colors.muted }} className="mb-1 text-xs font-bold uppercase">
+          <Text
+            style={{ color: colors.muted }}
+            className="mb-1 text-xs font-bold uppercase"
+          >
             {label}
           </Text>
 
@@ -1087,10 +1140,7 @@ function SectionTitle({
         {title}
       </Text>
 
-      <Text
-        style={{ color: colors.muted }}
-        className="mt-1 text-xs leading-4"
-      >
+      <Text style={{ color: colors.muted }} className="mt-1 text-xs leading-4">
         {subtitle}
       </Text>
     </View>
@@ -1200,10 +1250,16 @@ function SummaryCard({
     >
       <View className="flex-row items-center justify-between">
         <View>
-          <Text style={{ color: colors.muted }} className="text-xs font-bold uppercase">
+          <Text
+            style={{ color: colors.muted }}
+            className="text-xs font-bold uppercase"
+          >
             Estimated earning
           </Text>
-          <Text style={{ color: colors.text }} className="mt-2 text-3xl font-extrabold">
+          <Text
+            style={{ color: colors.text }}
+            className="mt-2 text-3xl font-extrabold"
+          >
             {estimatedFullRoutePrice > 0 ? `₹${estimatedFullRoutePrice}` : "--"}
           </Text>
         </View>
@@ -1212,7 +1268,10 @@ function SummaryCard({
           style={{ backgroundColor: colors.primarySoft }}
           className="rounded-2xl px-4 py-2"
         >
-          <Text style={{ color: colors.primary }} className="text-xs font-extrabold">
+          <Text
+            style={{ color: colors.primary }}
+            className="text-xs font-extrabold"
+          >
             {seats} seat{seats > 1 ? "s" : ""} × ₹{pricePerKm}/km
           </Text>
         </View>
@@ -1220,8 +1279,9 @@ function SummaryCard({
 
       <Text style={{ color: colors.muted }} className="mt-3 text-xs leading-5">
         {selectedRoute
-          ? `${selectedRoute.distance_text || "Distance unavailable"} • ${selectedRoute.duration_text || "Duration unavailable"
-          }`
+          ? `${selectedRoute.distance_text || "Distance unavailable"} • ${
+              selectedRoute.duration_text || "Duration unavailable"
+            }`
           : "Select route to calculate full route earning."}
       </Text>
     </View>
@@ -1319,9 +1379,7 @@ function BottomPublishBar({
         onPress={onPress}
         disabled={!isFormValid || loading}
         style={{
-          backgroundColor: isFormValid
-            ? colors.primary
-            : colors.muted,
+          backgroundColor: isFormValid ? colors.primary : colors.muted,
           opacity: loading ? 0.75 : 1,
           minHeight: 54,
           alignItems: "center",
@@ -1333,16 +1391,13 @@ function BottomPublishBar({
           <ActivityIndicator color="#FFFFFF" />
         ) : (
           <Text className="text-base font-extrabold text-white">
-            {isFormValid
-              ? "Publish Ride"
-              : "Complete Ride Details"}
+            {isFormValid ? "Publish Ride" : "Complete Ride Details"}
           </Text>
         )}
       </TouchableOpacity>
     </View>
   );
 }
-
 
 function ConnectedPlaceInput({
   value,
@@ -1590,7 +1645,6 @@ function ConnectedPlaceInput({
   );
 }
 
-
 function PublishRouteInputCard({
   from,
   to,
@@ -1743,4 +1797,13 @@ function PublishRouteInputCard({
       </View>
     </View>
   );
+}
+
+async function ensureLocationPermission(): Promise<boolean> {
+  const current = await Location.getForegroundPermissionsAsync();
+  if (current.granted) return true;
+  if (!current.canAskAgain) return false;
+
+  const requested = await Location.requestForegroundPermissionsAsync();
+  return requested.granted;
 }
