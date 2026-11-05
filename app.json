@@ -4,23 +4,24 @@
     "slug": "pool-sharing",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/1024.png",
+    "icon": "./assets/Logo/icon-1024.png",
     "scheme": "poolshare",
     "userInterfaceStyle": "automatic",
-
     "ios": {
-      "icon": "./assets/images/1024.png",
+      "icon": "./assets/Logo/icon-1024.png",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow PoolShare to access your photo library to upload vehicle photos.",
         "NSDocumentsFolderUsageDescription": "Allow PoolShare to access your documents folder to upload RC certificates."
       }
     },
-
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icons/adaptive.png",
-        "monochromeImage": "./assets/icons/adaptive.png",
+        "foregroundImage": "./assets/Logo/adaptive-foreground-1024.png",
+        "monochromeImage": "./assets/Logo/notification-icon-96.png",
         "backgroundColor": "#020817"
+      },
+      "web": {
+        "favicon": "./assets/Logo/favicon-48.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.rudranarayan.maastrix.carpooling",
@@ -34,12 +35,10 @@
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
       ]
     },
-
     "web": {
       "output": "static",
       "favicon": "./assets/icons/favicon.png"
     },
-
     "plugins": [
       "expo-image",
       "expo-web-browser",
@@ -50,7 +49,7 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#020817",
-          "image": "./assets/images/notification-icon.png",
+          "image": "./assets/Logo/splash-logo-1024.png",
           "imageWidth": 180,
           "resizeMode": "contain"
         }
@@ -77,19 +76,16 @@
       "expo-secure-store",
       "@react-native-community/datetimepicker"
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
-
     "extra": {
       "router": {},
       "eas": {
         "projectId": "8bbd67b9-b791-49d0-a2a5-740498e5a33b"
       }
     },
-
     "owner": "rudranarayan.maastrix"
   }
 }

@@ -143,8 +143,32 @@ export async function apiClient(
 
   APIlogger.request(url, options.method || "GET", getBodyForLog(options));
 
-  const response = await fetch(url, fetchOptions);
-  const data = await parseResponse(response);
+  const controller = new AbortController();
+  const timeoutMs = isFormData ? 60_000 : 20_000;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  let data: any;
+
+  try {
+    response = await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
+    });
+    data = await parseResponse(response);
+  } catch (error: any) {
+    console.log("FETCH ERROR:", error?.name, error?.message, url);
+    if (error?.name === "AbortError") {
+      throw new Error(
+        isFormData
+          ? "Upload timed out. Check your connection and try again."
+          : "Request timed out. Please try again.",
+      );
+    }
+    throw new Error("Network error. Check your connection and try again.");
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (response.status === 401 && options.auth !== false && !options._retry) {
     const newAccessToken = await refreshAccessToken();
@@ -174,6 +198,5 @@ export async function apiClient(
   }
 
   APIlogger.response(url, data);
-
   return data;
 }
