@@ -20,9 +20,6 @@
         "monochromeImage": "./assets/Logo/notification-icon-96.png",
         "backgroundColor": "#020817"
       },
-      "web": {
-        "favicon": "./assets/Logo/favicon-48.png"
-      },
       "predictiveBackGestureEnabled": false,
       "package": "com.rudranarayan.maastrix.carpooling",
       "googleServicesFile": "./google-services.json",
