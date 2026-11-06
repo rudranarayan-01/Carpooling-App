@@ -22,13 +22,11 @@ export default function CustomSplashScreen({
         tension: 40,
         useNativeDriver: true,
       }),
-
       Animated.timing(logoOpacity, {
         toValue: 1,
         duration: 600,
         useNativeDriver: true,
       }),
-
       Animated.timing(contentOpacity, {
         toValue: 1,
         duration: 800,
@@ -36,17 +34,12 @@ export default function CustomSplashScreen({
         useNativeDriver: true,
       }),
     ]).start();
+  }, []);
 
+  // Trigger native splash hide once mounted
+  useEffect(() => {
     if (onFinish) {
-      const timer = setTimeout(() => {
-        Animated.timing(logoOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => onFinish());
-      }, 1100);
-
-      return () => clearTimeout(timer);
+      onFinish();
     }
   }, []);
 

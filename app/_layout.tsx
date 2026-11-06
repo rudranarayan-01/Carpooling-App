@@ -1,11 +1,14 @@
 import { ConfirmProvider } from "@/components/common/ConfirmProvider";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-import { registerAndSavePushTokenAsync, useNotificationListeners } from "@/lib/pushNotifications";
+import {
+  registerAndSavePushTokenAsync,
+  useNotificationListeners,
+} from "@/lib/pushNotifications";
 import { queryClient } from "@/lib/queryClient";
 import { AppThemeProvider, useAppTheme } from "@/theme/ThemeProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
-import * as SplashScreen from 'expo-splash-screen';
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
@@ -30,13 +33,21 @@ function AppContent() {
     });
   }, [isAuthenticated, user?.id]);
 
+  // Enforce minimum display duration of 2.5 seconds on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsSplashTimingComplete(true);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Keep splash visible until BOTH auth loading finishes and the 2.5s timer completes
   const showSplash = isLoading || !isSplashTimingComplete;
 
   if (showSplash) {
     return (
       <CustomSplashScreen
         onFinish={async () => {
-          setIsSplashTimingComplete(true);
           try {
             await SplashScreen.hideAsync();
           } catch (e) {
@@ -61,17 +72,14 @@ function AppContent() {
           },
         }}
       >
-        {/* Absolute Override Routes */}
         <Stack.Screen name="index" options={{ animation: "none" }} />
         <Stack.Screen name="(auth)" options={{ animation: "none" }} />
         <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
-
-        {/* Override sub-screens only if they require a unique property, like rewards */}
-        <Stack.Screen name="rewards" options={{ fullScreenGestureEnabled: false }} />
-
-
+        <Stack.Screen
+          name="rewards"
+          options={{ fullScreenGestureEnabled: false }}
+        />
       </Stack>
-
       <ExpoStatusBar style={isDark ? "light" : "dark"} />
     </View>
   );

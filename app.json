@@ -60,7 +60,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/ic_stat_icons8_car_64_1.png",
+          "icon": "./assets/Logo/notification-icon-96.png",
           "color": "#0066CC"
         }
       ],
